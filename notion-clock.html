@@ -1,16 +1,91 @@
 <!doctype html>
-<html>
-  <head><meta charset="utf-8"><title>Clock Test</title></head>
-  <body style="font:700 64px/1.1 -apple-system,Segoe UI,Roboto,Helvetica,Arial; display:flex; align-items:center; justify-content:center; height:100vh; margin:0;">
-    <div id="clk">--:--:--</div>
-    <script>
-      function tick(){
-        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone; // system TZ
-        const now = new Date();
-        const s = now.toLocaleTimeString('en-US', { hour12:false, hour:'2-digit', minute:'2-digit', second:'2-digit', timeZone: tz });
-        document.getElementById('clk').textContent = s;
-      }
-      tick(); setInterval(tick, 500);
-    </script>
-  </body>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Notion Clock</title>
+<style>
+  :root{
+    --fg:#111111; --bg:transparent; --accent:#6b8afd;
+    --font: ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    --weight: 700; --radius: 16px; --pad: 20px;
+    --size: 64px; --date-size: 14px; --letter: 0.02em; --shadow: 0 2px 18px rgba(17,17,17,.06);
+  }
+  html,body{height:100%}
+  body{margin:0; display:grid; place-items:center; background:var(--bg); color:var(--fg); font-family:var(--font)}
+  .card{padding:var(--pad); border-radius:var(--radius); box-shadow:var(--shadow); background:var(--bg)}
+  .time{display:flex; gap:.25ch; align-items:baseline; justify-content:center; font-weight:var(--weight); font-size:var(--size); letter-spacing:var(--letter); line-height:1.05; white-space:nowrap}
+  .ampm{font-size:calc(var(--size)*.35); font-weight:600; opacity:.75; margin-left:.25ch}
+  .date{margin-top:.4rem; text-align:center; font-size:var(--date-size); opacity:.85}
+  .dots{color:var(--accent); padding:0 .25ch; user-select:none}
+  .tz{margin-top:.25rem; text-align:center; font-size:12px; opacity:.65}
+  @media (max-width:400px){ :root{ --size: 48px; --pad:16px } }
+  @media (max-width:300px){ :root{ --size: 40px; --pad:12px } }
+  @media (prefers-color-scheme: dark){ :root{ --fg:#f5f5f5; --shadow:none } }
+</style>
+</head>
+<body>
+  <div class="card" id="wrap">
+    <div class="time" id="time">
+      <span id="hh">--</span><span>:</span><span id="mm">--</span>
+      <span id="secwrap" style="display:none"><span>:</span><span id="ss">--</span></span>
+      <span class="ampm" id="ampm" style="display:none">AM</span>
+    </div>
+    <div class="date" id="date">—</div>
+    <div class="tz" id="tzline"></div>
+  </div>
+
+<script>
+const q = new URLSearchParams(location.search);
+const $ = id => document.getElementById(id);
+const root = document.documentElement;
+const setVar = (k,v)=> v && root.style.setProperty(k, v);
+
+setVar('--fg', q.get('fg')); setVar('--bg', q.get('bg')); setVar('--accent', q.get('accent'));
+setVar('--size', q.get('size')); setVar('--date-size', q.get('dateSize'));
+setVar('--weight', q.get('weight')); setVar('--radius', q.get('radius'));
+setVar('--pad', q.get('pad')); setVar('--letter', q.get('letter'));
+
+const tz = q.get('tz') || Intl.DateTimeFormat().resolvedOptions().timeZone;
+const h24 = q.get('h24') === '1';
+const showSeconds = q.get('seconds') === '1';
+const showTZ = q.get('showTZ') === '1';
+
+if (showSeconds) $('secwrap').style.display = '';
+if (!h24) $('ampm').style.display = '';
+
+function pad(n){ return String(n).padStart(2,'0'); }
+
+function render(){
+  try{
+    const now = new Date();
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz, hour12: !h24,
+      hour:'numeric', minute:'numeric', second: showSeconds ? 'numeric' : undefined
+    }).formatToParts(now).reduce((a,p)=> (a[p.type]=p.value, a), {});
+    let h = parts.hour || '--';
+    let m = parts.minute || '--';
+    let s = parts.second || '--';
+    let ap = parts.dayPeriod || '';
+
+    if (h24) h = pad(h); m = pad(m); if (showSeconds) s = pad(s);
+
+    $('hh').textContent = h;
+    $('mm').textContent = m;
+    if (showSeconds) $('ss').textContent = s;
+    if (!h24) $('ampm').textContent = (ap||'').toUpperCase();
+
+    const dParts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz, weekday:'short', month:'short', day:'numeric', year:'numeric'
+    }).formatToParts(now).reduce((a,p)=> (a[p.type]=p.value, a), {});
+    $('date').innerHTML = `${dParts.weekday||''}<span class="dots"> • </span>${dParts.month||''} ${dParts.day||''}, ${dParts.year||''}`;
+
+    $('tzline').textContent = showTZ ? tz : '';
+  }catch(e){
+    $('date').textContent = 'Invalid time zone';
+  }
+}
+render(); setInterval(render, 250);
+</script>
+</body>
 </html>
