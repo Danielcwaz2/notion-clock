@@ -72,7 +72,7 @@ setVar('--pad', q.get('pad'));
 setVar('--letter', q.get('letter'));
 
 const tz = q.get('tz') || Intl.DateTimeFormat().resolvedOptions().timeZone;
-const h24 = q.get('h24') === '1';
+const h24 = q.get('h12') === '1';
 const showSeconds = q.get('seconds') === '1';
 const showTZ = q.get('showTZ') === '1';
 
@@ -85,7 +85,7 @@ function render(){
   try{
     const now = new Date();
     const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: tz, hour12: !h24,
+      timeZone: tz, hour12: !h12,
       hour:'numeric', minute:'numeric', second: showSeconds ? 'numeric' : undefined
     }).formatToParts(now).reduce((a,p)=> (a[p.type]=p.value, a), {});
     let h = parts.hour || '--';
@@ -98,7 +98,7 @@ function render(){
     $('hh').textContent = h;
     $('mm').textContent = m;
     if (showSeconds) $('ss').textContent = s;
-    if (!h24) $('ampm').textContent = (ap||'').toUpperCase();
+    if (!h12) $('ampm').textContent = (ap||'').toUpperCase();
 
     // Date line: Tue • Oct 7, 2025
     const dParts = new Intl.DateTimeFormat('en-US', {
