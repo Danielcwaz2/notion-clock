@@ -1,3 +1,4 @@
+<!-- /index.html -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -6,113 +7,212 @@
 <title>Notion Clock</title>
 <style>
   :root{
-    /* RED digits by default; transparent bg */
-    --fg:#FFFFE4;        /* <- digit color */
-    --bg:transparent;    /* <- transparent background */
-    --accent:#FFFFE4;    /* date dot accent */
+    --fg:#FFFFE4;
+    --bg:transparent;
+    --accent:#FFFFE4;
     --font: ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
-    --weight: 800;       /* bolder for clarity */
-    --radius: 12px;
-    --pad: 16px;
-    --size: 72px;        /* bigger for readability */
-    --date-size: 14px;
-    --letter: 0.02em;
-    --shadow: none;      /* no card shadow so it floats on Notion */
+    --weight:800;
+    --radius:12px;
+    --pad:16px;
+    --size:72px;
+    --date-size:14px;
+    --letter:0.02em;
     --glow: 0 0 6px rgba(255,0,0,.35), 0 0 18px rgba(255,0,0,.15);
+
+    /* animation tokens */
+    --transition-fast:200ms;
+    --transition-slow:420ms;
+
+    /* control surface */
+    --btn-bg:rgba(255,255,255,.10);
+    --btn-border:rgba(255,255,255,.25);
   }
+
   html,body{height:100%}
   body{
     margin:0; display:grid; place-items:center;
-    background:var(--bg); color:var(--fg); font-family:var(--font)
+    background:var(--bg); color:var(--fg); font-family:var(--font);
+    transition:
+      background var(--transition-slow) ease,
+      color var(--transition-slow) ease,
+      text-shadow var(--transition-slow) ease;
   }
-  .card{ padding:var(--pad); border-radius:var(--radius); background:var(--bg) }
+
+  .card{
+    padding:var(--pad); border-radius:var(--radius); background:var(--bg); text-align:center;
+    transition:
+      background var(--transition-slow) ease,
+      box-shadow var(--transition-slow) ease,
+      border-color var(--transition-slow) ease;
+  }
+
   .time{
     display:flex; gap:.25ch; align-items:baseline; justify-content:center;
-    font-weight:var(--weight); font-size:var(--size); letter-spacing:var(--letter); line-height:1.05; white-space:nowrap;
-    text-shadow: var(--glow); /* soft glow for clarity on light/dark pages */
+    font-weight:var(--weight); font-size:var(--size); letter-spacing:var(--letter);
+    text-shadow:var(--glow);
+    transition:
+      color var(--transition-slow) ease,
+      text-shadow var(--transition-slow) ease;
   }
-  .ampm{font-size:calc(var(--size)*.35); font-weight:700; opacity:.9; margin-left:.25ch; text-shadow: var(--glow)}
-  .date{margin-top:.35rem; text-align:center; font-size:var(--date-size); opacity:.9; text-shadow: var(--glow)}
-  .dots{color:var(--accent); padding:0 .25ch; user-select:none}
-  .tz{margin-top:.2rem; text-align:center; font-size:12px; opacity:.7}
-  @media (max-width:400px){ :root{ --size: 56px; --pad:14px } }
-  @media (max-width:300px){ :root{ --size: 44px; --pad:10px } }
+
+  .ampm{
+    font-size:calc(var(--size)*.35); font-weight:700; opacity:.9; margin-left:.25ch; text-shadow:var(--glow);
+    transition: color var(--transition-slow) ease, text-shadow var(--transition-slow) ease, opacity var(--transition-fast) ease;
+  }
+
+  .date{
+    margin-top:.35rem; font-size:var(--date-size); opacity:.9; text-shadow:var(--glow);
+    transition: color var(--transition-slow) ease, text-shadow var(--transition-slow) ease, opacity var(--transition-fast) ease;
+  }
+
+  .dots{color:var(--accent); padding:0 .25ch; user-select:none; transition: color var(--transition-slow) ease}
+  .tz{margin-top:.2rem; font-size:12px; opacity:.7; transition: color var(--transition-slow) ease, opacity var(--transition-fast) ease}
+
+  .controls{margin-top:1rem; display:flex; gap:.5rem; justify-content:center; flex-wrap:wrap}
+  button{
+    background:var(--btn-bg); border:1px solid var(--btn-border);
+    border-radius:8px; color:var(--fg); padding:6px 12px; cursor:pointer; font-size:14px;
+    transition:
+      background var(--transition-fast) ease,
+      color var(--transition-fast) ease,
+      border-color var(--transition-fast) ease,
+      transform 120ms ease;
+  }
+  button:hover{background:color-mix(in oklab, var(--btn-bg) 70%, white 30%)}
+  button:active{transform:scale(0.98)}
+  input[type="color"]{
+    background:none; border:1px solid var(--btn-border); width:32px; height:32px; padding:0; border-radius:50%; cursor:pointer;
+    transition: border-color var(--transition-fast) ease, box-shadow var(--transition-fast) ease;
+  }
+  input[type="color"]:hover{box-shadow:0 0 0 3px color-mix(in oklab, var(--accent) 35%, transparent)}
+
+  @media (max-width:400px){ :root{ --size:56px; --pad:14px } }
+  @media (max-width:300px){ :root{ --size:44px; --pad:10px } }
+
+  /* Accessibility: respect reduced motion */
+  @media (prefers-reduced-motion: reduce){
+    *{ transition:none !important; animation:none !important }
+  }
 </style>
 </head>
 <body>
-  <div class="card" id="wrap">
-    <div class="time" id="time">
+  <div class="card">
+    <div class="time">
       <span id="hh">--</span><span>:</span><span id="mm">--</span>
       <span id="secwrap" style="display:none"><span>:</span><span id="ss">--</span></span>
       <span class="ampm" id="ampm" style="display:none">AM</span>
     </div>
     <div class="date" id="date">—</div>
     <div class="tz" id="tzline"></div>
+
+    <div class="controls">
+      <button id="toggle12">12/24 HR</button>
+      <button id="toggleSec">Seconds</button>
+      <button id="toggleTZ">TimeZone</button>
+      <input type="color" id="colorPicker" title="Change Accent Color" />
+      <button id="toggleTheme">🌗 Theme</button>
+      <button id="resetBtn">Reset</button>
+    </div>
   </div>
 
 <script>
-/* URL params:
-   tz=America/New_York  h24=1|0  seconds=1  showTZ=1
-   fg, bg, accent, size, weight, dateSize, radius, pad, letter
-   (Note: # must be encoded as %23 in URLs)
-*/
-const q = new URLSearchParams(location.search);
 const $ = id => document.getElementById(id);
-const root = document.documentElement;
-const setVar = (k,v)=> v && root.style.setProperty(k, v);
 
-setVar('--fg', q.get('fg'));
-setVar('--bg', q.get('bg'));
-setVar('--accent', q.get('accent'));
-setVar('--size', q.get('size'));
-setVar('--date-size', q.get('dateSize'));
-setVar('--weight', q.get('weight'));
-setVar('--radius', q.get('radius'));
-setVar('--pad', q.get('pad'));
-setVar('--letter', q.get('letter'));
+let settings = JSON.parse(localStorage.getItem('clockSettings')) || {
+  h12: true,
+  showSeconds: false,
+  showTZ: false,
+  accent: '#FFFFE4',
+  theme: 'dark' // 'light' | 'dark'
+};
 
-const tz = q.get('tz') || Intl.DateTimeFormat().resolvedOptions().timeZone;
-const h24 = q.get('h12') === '1';
-const showSeconds = q.get('seconds') === '1';
-const showTZ = q.get('showTZ') === '1';
+const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-if (showSeconds) $('secwrap').style.display = '';
-if (!h24) $('ampm').style.display = '';
+const setVars = (map) => {
+  for (const [k,v] of Object.entries(map)) document.body.style.setProperty(k, v);
+};
 
 function pad(n){ return String(n).padStart(2,'0'); }
+
+function applyTheme(){
+  if (settings.theme === 'light') {
+    setVars({
+      '--bg':'#F9F9F9',
+      '--fg':'#111',
+      '--glow':'none',
+      '--btn-bg':'rgba(0,0,0,.06)',
+      '--btn-border':'rgba(0,0,0,.20)'
+    });
+  } else {
+    setVars({
+      '--bg':'transparent',
+      '--fg': settings.accent,        /* why: digits use accent in dark for pop */
+      '--glow':'0 0 6px rgba(255,0,0,.35), 0 0 18px rgba(255,0,0,.15)',
+      '--btn-bg':'rgba(255,255,255,.10)',
+      '--btn-border':'rgba(255,255,255,.25)'
+    });
+  }
+}
+
+function applyAccent(){
+  document.documentElement.style.setProperty('--accent', settings.accent);
+  if (settings.theme === 'dark') {
+    document.body.style.setProperty('--fg', settings.accent);
+  }
+}
 
 function render(){
   try{
     const now = new Date();
     const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: tz, hour12: !h12,
-      hour:'numeric', minute:'numeric', second: showSeconds ? 'numeric' : undefined
+      timeZone: tz,
+      hour12: settings.h12,
+      hour:'numeric',
+      minute:'numeric',
+      second: settings.showSeconds ? 'numeric' : undefined
     }).formatToParts(now).reduce((a,p)=> (a[p.type]=p.value, a), {});
-    let h = parts.hour || '--';
-    let m = parts.minute || '--';
-    let s = parts.second || '--';
-    let ap = parts.dayPeriod || '';
+    const h = parts.hour || '--';
+    const m = parts.minute || '--';
+    const s = parts.second || '--';
+    const ap = parts.dayPeriod || '';
 
-    if (h24) h = pad(h); m = pad(m); if (showSeconds) s = pad(s);
+    $('hh').textContent = pad(h);
+    $('mm').textContent = pad(m);
+    if (settings.showSeconds) $('ss').textContent = pad(s);
 
-    $('hh').textContent = h;
-    $('mm').textContent = m;
-    if (showSeconds) $('ss').textContent = s;
-    if (!h12) $('ampm').textContent = (ap||'').toUpperCase();
+    $('secwrap').style.display = settings.showSeconds ? '' : 'none';
+    $('ampm').style.display = settings.h12 ? '' : 'none';
+    if (settings.h12) $('ampm').textContent = (ap || '').toUpperCase();
 
-    // Date line: Tue • Oct 7, 2025
     const dParts = new Intl.DateTimeFormat('en-US', {
       timeZone: tz, weekday:'short', month:'short', day:'numeric', year:'numeric'
     }).formatToParts(now).reduce((a,p)=> (a[p.type]=p.value, a), {});
-    $('date').innerHTML = `${dParts.weekday||''}<span class="dots"> • </span>${dParts.month||''} ${dParts.day||''}, ${dParts.year||''}`;
-
-    $('tzline').textContent = showTZ ? tz : '';
-  }catch(e){
+    $('date').innerHTML = `${dParts.weekday}<span class="dots"> • </span>${dParts.month} ${dParts.day}, ${dParts.year}`;
+    $('tzline').textContent = settings.showTZ ? tz : '';
+  }catch{
     $('date').textContent = 'Invalid time zone';
   }
 }
+
+function save(){ localStorage.setItem('clockSettings', JSON.stringify(settings)); }
+
+// init
+applyTheme();
+applyAccent();
 render();
 setInterval(render, 250);
+
+// UI events
+$('toggle12').onclick = ()=>{ settings.h12 = !settings.h12; save(); render(); };
+$('toggleSec').onclick = ()=>{ settings.showSeconds = !settings.showSeconds; save(); render(); };
+$('toggleTZ').onclick = ()=>{ settings.showTZ = !settings.showTZ; save(); render(); };
+$('colorPicker').value = settings.accent;
+$('colorPicker').oninput = (e)=>{ settings.accent = e.target.value; applyAccent(); save(); };
+$('toggleTheme').onclick = ()=>{
+  settings.theme = (settings.theme === 'light') ? 'dark' : 'light';
+  applyTheme(); applyAccent(); save();
+};
+$('resetBtn').onclick = ()=>{ localStorage.removeItem('clockSettings'); location.reload(); };
 </script>
 </body>
 </html>
